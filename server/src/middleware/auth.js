@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { can } from '../config/permissions.js';
 
 export const protect = async (req, res, next) => {
   const header = req.headers.authorization;
@@ -22,6 +23,13 @@ export const protect = async (req, res, next) => {
 export const authorize = (...roles) => (req, res, next) => {
   if (!roles.includes(req.user.role)) {
     return res.status(403).json({ message: 'Insufficient permissions' });
+  }
+  next();
+};
+
+export const requirePermission = (permission) => (req, res, next) => {
+  if (!can(req.user.role, permission)) {
+    return res.status(403).json({ message: 'Insufficient permissions for this action' });
   }
   next();
 };

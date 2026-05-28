@@ -3,8 +3,10 @@ import Order from '../models/Order.js';
 import Table from '../models/Table.js';
 import MenuItem from '../models/MenuItem.js';
 import Settings from '../models/Settings.js';
-import { protect } from '../middleware/auth.js';
+import { protect, requirePermission } from '../middleware/auth.js';
 import { calcTotals, generateOrderNumber } from '../utils/orderCalc.js';
+import { isOrderClosed, isOrderLockedForUser } from '../utils/orderGuards.js';
+import { can } from '../config/permissions.js';
 
 const router = express.Router();
 router.use(protect);
@@ -33,12 +35,41 @@ router.get('/', async (req, res) => {
   res.json(orders);
 });
 
-router.get('/kitchen', async (req, res) => {
+router.get('/kitchen', requirePermission('kitchen.view'), async (req, res) => {
   const orders = await Order.find({
-    status: { $in: ['sent', 'preparing', 'ready'] },
+    status: { $in: ['sent', 'preparing'] },
   })
     .populate('table', 'number')
     .sort('updatedAt');
+  res.json(orders);
+});
+
+router.get('/takeaway', async (req, res) => {
+  const filter = { type: 'takeaway' };
+  const view = req.query.view || 'active';
+
+  if (view === 'active') {
+    filter.status = { $nin: ['paid', 'cancelled'] };
+  } else {
+    filter.status = 'paid';
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    filter.createdAt = { $gte: start };
+  }
+
+  const statusOrder = { ready: 0, preparing: 1, sent: 2, open: 3, served: 4 };
+  const orders = await Order.find(filter)
+    .populate('createdBy', 'name')
+    .sort('-updatedAt')
+    .limit(80);
+
+  orders.sort((a, b) => {
+    const sa = statusOrder[a.status] ?? 5;
+    const sb = statusOrder[b.status] ?? 5;
+    if (sa !== sb) return sa - sb;
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
+
   res.json(orders);
 });
 
@@ -50,7 +81,7 @@ router.get('/:id', async (req, res) => {
   res.json(order);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('orders.create'), async (req, res) => {
   const settings = await getSettings();
   const orderNumber = await generateOrderNumber(Order);
   const order = new Order({
@@ -75,11 +106,12 @@ router.post('/', async (req, res) => {
   res.status(201).json(order);
 });
 
-router.post('/:id/items', async (req, res) => {
+router.post('/:id/items', requirePermission('orders.add_items'), async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: 'Order not found' });
-  if (['paid', 'cancelled'].includes(order.status)) {
-    return res.status(400).json({ message: 'Order is closed' });
+  if (isOrderClosed(order)) return res.status(400).json({ message: 'Order is closed' });
+  if (isOrderLockedForUser(order, req.user)) {
+    return res.status(403).json({ message: 'Cannot add items after order was sent to kitchen' });
   }
   const menuItem = await MenuItem.findById(req.body.menuItemId);
   if (!menuItem || !menuItem.isAvailable) {
@@ -103,27 +135,45 @@ router.patch('/:id/items/:itemId', async (req, res) => {
   if (!order) return res.status(404).json({ message: 'Order not found' });
   const item = order.items.id(req.params.itemId);
   if (!item) return res.status(404).json({ message: 'Line item not found' });
-  if (req.body.quantity !== undefined) item.quantity = Math.max(1, req.body.quantity);
-  if (req.body.notes !== undefined) item.notes = req.body.notes;
-  if (req.body.status) item.status = req.body.status;
+
+  if (req.body.status) {
+    if (!can(req.user.role, 'kitchen.update')) {
+      return res.status(403).json({ message: 'Insufficient permissions for kitchen updates' });
+    }
+    item.status = req.body.status;
+  } else {
+    if (isOrderClosed(order)) return res.status(400).json({ message: 'Order is closed' });
+    if (isOrderLockedForUser(order, req.user)) {
+      return res.status(403).json({ message: 'Cannot edit items after order was sent to kitchen' });
+    }
+    if (req.body.quantity !== undefined) item.quantity = Math.max(1, req.body.quantity);
+    if (req.body.notes !== undefined) item.notes = req.body.notes;
+  }
   applyTotals(order, await getSettings());
   await order.save();
   res.json(order);
 });
 
-router.delete('/:id/items/:itemId', async (req, res) => {
+router.delete('/:id/items/:itemId', requirePermission('orders.remove_items'), async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: 'Order not found' });
+  if (isOrderClosed(order)) return res.status(400).json({ message: 'Order is closed' });
+  if (isOrderLockedForUser(order, req.user)) {
+    return res.status(403).json({ message: 'Cannot remove items after order was sent to kitchen' });
+  }
   order.items.pull(req.params.itemId);
   applyTotals(order, await getSettings());
   await order.save();
   res.json(order);
 });
 
-router.post('/:id/send', async (req, res) => {
+router.post('/:id/send', requirePermission('orders.send_kitchen'), async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: 'Order not found' });
   if (!order.items.length) return res.status(400).json({ message: 'Add items first' });
+  if (['sent', 'preparing', 'ready'].includes(order.status)) {
+    return res.status(400).json({ message: 'Order already sent to kitchen' });
+  }
   order.status = 'sent';
   order.items.forEach((i) => {
     if (i.status === 'pending') i.status = 'preparing';
@@ -135,21 +185,42 @@ router.post('/:id/send', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: 'Order not found' });
-  if (req.body.status) order.status = req.body.status;
+  if (req.body.status === 'ready' && !can(req.user.role, 'kitchen.update')) {
+    return res.status(403).json({ message: 'Insufficient permissions for kitchen updates' });
+  }
+  if (req.body.status === 'ready') {
+    order.items.forEach((item) => {
+      if (!['cancelled', 'served'].includes(item.status)) item.status = 'ready';
+    });
+    order.status = 'ready';
+  } else if (req.body.status) {
+    order.status = req.body.status;
+  }
   await order.save();
   res.json(order);
 });
 
-router.post('/:id/discount', async (req, res) => {
+router.post('/:id/discount', requirePermission('orders.discount'), async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: 'Order not found' });
-  order.discount = Math.max(0, Number(req.body.discount) || 0);
-  applyTotals(order, await getSettings());
+  if (['paid', 'cancelled'].includes(order.status)) {
+    return res.status(400).json({ message: 'Cannot discount a closed order' });
+  }
+
+  const settings = await getSettings();
+  if (req.body.percent != null && req.body.percent !== '') {
+    const pct = Math.min(100, Math.max(0, Number(req.body.percent)));
+    order.discount = Math.round(order.subtotal * (pct / 100) * 100) / 100;
+  } else {
+    order.discount = Math.min(order.subtotal, Math.max(0, Number(req.body.discount ?? req.body.amount) || 0));
+  }
+
+  applyTotals(order, settings);
   await order.save();
   res.json(order);
 });
 
-router.post('/:id/pay', async (req, res) => {
+router.post('/:id/pay', requirePermission('orders.pay'), async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: 'Order not found' });
   if (!order.items.length) return res.status(400).json({ message: 'Nothing to pay' });
@@ -176,7 +247,7 @@ router.post('/:id/pay', async (req, res) => {
   res.json(order);
 });
 
-router.post('/:id/cancel', async (req, res) => {
+router.post('/:id/cancel', requirePermission('orders.cancel'), async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: 'Order not found' });
   if (order.status === 'paid') return res.status(400).json({ message: 'Cannot cancel paid order' });

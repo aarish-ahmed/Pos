@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Pencil, Upload, ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Upload, ImageIcon, ImageOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/client';
 import Modal from '../components/Modal';
@@ -99,6 +99,12 @@ export default function MenuManage() {
   };
 
   const previewSrc = form.image ? resolveImageUrl(form.image) : '';
+
+  const removePhoto = () => {
+    setForm((prev) => ({ ...prev, image: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    toast.success('Photo removed — save item to apply');
+  };
 
   return (
     <div className="p-8">
@@ -203,15 +209,31 @@ export default function MenuManage() {
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              className="btn-secondary mt-2 w-full"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="w-4 h-4" />
-              {form.image ? 'Change photo' : 'Upload from computer'}
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4" />
+                {form.image ? 'Change' : 'Upload'}
+              </button>
+              {form.image && (
+                <button
+                  type="button"
+                  className="btn-danger flex-1"
+                  disabled={uploading}
+                  onClick={removePhoto}
+                >
+                  <ImageOff className="w-4 h-4" />
+                  Remove photo
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-1.5">
+              Removing the photo shows the item initial on the floor until you upload again.
+            </p>
           </div>
 
           <div>

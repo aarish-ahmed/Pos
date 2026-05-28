@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api from '../api/client';
+import { can as checkPermission } from '../config/permissions';
 
 const AuthContext = createContext(null);
 
@@ -45,9 +46,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const hasRole = (...roles) => roles.includes(user?.role);
+  const can = useCallback((permission) => checkPermission(user?.role, permission), [user?.role]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, hasRole, can }}>
       {children}
     </AuthContext.Provider>
   );

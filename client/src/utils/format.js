@@ -10,7 +10,7 @@ export const formatDate = (date) =>
 export const statusColor = {
   available: 'bg-emerald-400 text-white border-emerald-500 shadow-sm',
   occupied: 'bg-amber-400 text-amber-950 border-amber-500 shadow-sm',
-  reserved: 'bg-violet-500 text-white border-violet-600 shadow-sm',
+  reserved: 'bg-grape-500 text-white border-grape-600 shadow-sm',
   cleaning: 'bg-slate-400 text-white border-slate-500',
   open: 'bg-cyan-400 text-cyan-950',
   sent: 'bg-blue-500 text-white',
@@ -21,8 +21,8 @@ export const statusColor = {
 };
 
 export const categoryGradients = [
-  'from-orange-500 to-rose-500',
-  'from-violet-500 to-fuchsia-500',
+  'from-brand-500 to-brand-700',
+  'from-grape-500 to-grape-600',
   'from-cyan-500 to-blue-500',
   'from-emerald-500 to-teal-500',
   'from-amber-500 to-orange-500',

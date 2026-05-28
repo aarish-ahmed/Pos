@@ -5,13 +5,16 @@ A full-stack MERN restaurant POS with a calm sage-and-cream UI and standard rest
 ## Features
 
 - **Dashboard** — Today's revenue, orders, average ticket, top sellers
-- **Floor & orders** — Table map, dine-in and takeaway, add items, send to kitchen, payments
+- **Floor & orders** — Table map (select table → start/open order), dine-in and takeaway, discounts (fixed or %), split payments, send to kitchen
 - **Kitchen display** — Live tickets, item status (start / ready), auto-refresh
 - **Order history** — Today's orders with status and totals
 - **Menu management** — Categories and items with local photo upload (admin/manager)
-- **Reports** — 7-day sales breakdown
-- **Settings** — Restaurant info, tax, service charge, receipt footer
-- **Auth & roles** — admin, manager, cashier, waiter
+- **Analytics** — Multi-POV reports (time, menu, operations, team) with date/type filters and CSV export
+- **Menu photos** — Upload, URL, or remove item photos
+- **Settings** — Restaurant info, tax, service charge, receipt footer; admin staff accounts
+- **Kitchen alerts** — Sound + toast when an order is marked ready (any page)
+- **Auth & roles** — admin, manager, cashier, waiter with role-based access (enforced on API and UI)
+- **Staff management** (admin) — create, change role, deactivate, or delete staff accounts
 
 ## Tech stack
 
@@ -50,6 +53,19 @@ npm run dev
 | Manager | manager@pos.com  | manager123  |
 | Cashier | cashier@pos.com  | cashier123  |
 | Waiter  | waiter@pos.com   | waiter123   |
+
+## Role access (summary)
+
+| Capability | Admin | Manager | Cashier | Waiter |
+|------------|:-----:|:-------:|:-------:|:------:|
+| Dashboard & sales stats | ✓ | ✓ | ✓ | Open orders only |
+| Floor: orders & kitchen send | ✓ | ✓ | ✓ | ✓ |
+| Payments & discounts | ✓ | ✓ | ✓ | — |
+| Void / cancel orders | ✓ | ✓ | — | — |
+| Kitchen: mark ready | ✓ | ✓ | View only | View only |
+| Order history | ✓ | ✓ | ✓ | — |
+| Menu, reports, settings | ✓ | ✓ | — | — |
+| Staff accounts | ✓ | — | — | — |
 
 ## Project structure
 

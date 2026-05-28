@@ -3,7 +3,7 @@ import Reservation from '../models/Reservation.js';
 import Table from '../models/Table.js';
 import Order from '../models/Order.js';
 import Settings from '../models/Settings.js';
-import { protect } from '../middleware/auth.js';
+import { protect, requirePermission } from '../middleware/auth.js';
 import { calcTotals, generateOrderNumber } from '../utils/orderCalc.js';
 
 const router = express.Router();
@@ -138,7 +138,7 @@ router.patch('/:id', async (req, res) => {
   res.json(populated);
 });
 
-router.post('/:id/cancel', async (req, res) => {
+router.post('/:id/cancel', requirePermission('reservations.cancel'), async (req, res) => {
   const r = await Reservation.findById(req.params.id);
   if (!r) return res.status(404).json({ message: 'Reservation not found' });
   r.status = 'cancelled';
@@ -146,7 +146,7 @@ router.post('/:id/cancel', async (req, res) => {
   res.json({ message: 'Cancelled', reservation: r });
 });
 
-router.post('/:id/noshow', async (req, res) => {
+router.post('/:id/noshow', requirePermission('reservations.cancel'), async (req, res) => {
   const r = await Reservation.findById(req.params.id);
   if (!r) return res.status(404).json({ message: 'Reservation not found' });
   r.status = 'no-show';

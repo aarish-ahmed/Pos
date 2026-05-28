@@ -9,9 +9,9 @@ export default function Modal({ open, onClose, title, children, wide }) {
       <div
         className={`relative card w-full max-h-[90vh] overflow-y-auto ${wide ? 'max-w-2xl' : 'max-w-md'}`}
       >
-        <div className="flex items-center justify-between p-5 border-b border-violet-100 bg-gradient-to-r from-violet-50 to-orange-50">
-          <h2 className="text-lg font-bold text-ink-900">{title}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-violet-100 text-violet-700">
+        <div className="flex items-center justify-between p-5 border-b border-sage-100 bg-gradient-to-r from-brand-50 to-cream-50">
+          <h2 className="text-lg font-bold font-display text-ink-900">{title}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-brand-50 text-brand-700">
             <X className="w-5 h-5" />
           </button>
         </div>

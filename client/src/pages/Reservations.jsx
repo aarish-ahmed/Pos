@@ -5,7 +5,9 @@ import toast from 'react-hot-toast';
 import api from '../api/client';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
+import DateTimePicker from '../components/DateTimePicker';
 import { formatDate, formatTime } from '../utils/format';
+import { useAuth } from '../context/AuthContext';
 
 const toLocalInputValue = (d) => {
   const date = new Date(d);
@@ -16,6 +18,7 @@ const toLocalInputValue = (d) => {
 };
 
 export default function Reservations() {
+  const { can } = useAuth();
   const navigate = useNavigate();
   const [reservations, setReservations] = useState([]);
   const [tables, setTables] = useState([]);
@@ -230,7 +233,7 @@ export default function Reservations() {
                         <Pencil className="w-4 h-4" />
                         Edit
                       </button>
-                      {r.status !== 'cancelled' ? (
+                      {r.status !== 'cancelled' && can('reservations.cancel') ? (
                         <button onClick={() => cancel(r)} className="btn-danger">
                           <XCircle className="w-4 h-4" />
                           Cancel
@@ -284,13 +287,11 @@ export default function Reservations() {
                 required
               />
             </div>
-            <div>
-              <label className="label">Start</label>
-              <input
-                type="datetime-local"
-                className="input"
+            <div className="md:col-span-2">
+              <DateTimePicker
+                label="Start date & time"
                 value={form.startAt}
-                onChange={(e) => setForm({ ...form, startAt: e.target.value })}
+                onChange={(startAt) => setForm({ ...form, startAt })}
                 required
               />
             </div>
