@@ -1,6 +1,12 @@
 node_modules/
 dist/
 .env
+.env.local
+server/.env
+server/.env.local
+client/.env
+client/.env.production
+client/.env.development
 *.log
 .DS_Store
 server/uploads/*

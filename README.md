@@ -79,7 +79,20 @@ Pos/
 
 ## Menu photos
 
-In **Menu**, click an item and use **Upload from computer** (JPG/PNG/WEBP/GIF, max 5MB). Files are stored in `server/uploads/menu` and served at `/uploads/menu/...`. You can still paste an external image URL if needed.
+In **Menu**, click an item and use **Upload from computer** (JPG/PNG/WEBP/GIF, max 5MB). Locally, files are saved under `server/uploads/menu`. In production, set **Cloudinary** env vars on the server (see `server/.env.example`) so images persist across deploys. You can still paste an external image URL.
+
+## Production deployment
+
+**Full step-by-step guide:** [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+| File | Purpose |
+|------|---------|
+| `server/.env` | Production: Atlas, JWT, `CLIENT_URL`, Cloudinary |
+| `server/.env.local` | Local overrides (Mongo on `127.0.0.1`, `localhost:5173`) |
+| `client/.env` | `VITE_API_URL` → Render/Railway API |
+| `client/.env.production` | Same URL for Vercel/Netlify builds |
+
+Replace all `YOUR_*` placeholders before deploying.
 
 ## License
 

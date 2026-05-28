@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { can } from '../config/permissions.js';
+import { getJwtSecret } from '../config/env.js';
 
 export const protect = async (req, res, next) => {
   const header = req.headers.authorization;
@@ -9,7 +10,7 @@ export const protect = async (req, res, next) => {
   }
   try {
     const token = header.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret');
+    const decoded = jwt.verify(token, getJwtSecret());
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user?.isActive) {
       return res.status(401).json({ message: 'Account inactive' });

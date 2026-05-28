@@ -2,11 +2,11 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
+import { getJwtSecret } from '../config/env.js';
 
 const router = express.Router();
 
-const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '7d' });
+const signToken = (id) => jwt.sign({ id }, getJwtSecret(), { expiresIn: '7d' });
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;

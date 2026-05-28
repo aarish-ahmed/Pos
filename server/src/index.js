@@ -1,9 +1,10 @@
-import 'dotenv/config';
+import './config/loadEnv.js';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { connectDB } from './config/db.js';
+import { getCorsOrigins, isCloudinaryConfigured, validateProductionEnv } from './config/env.js';
 import authRoutes from './routes/auth.js';
 import tableRoutes from './routes/tables.js';
 import menuRoutes from './routes/menu.js';
@@ -12,13 +13,23 @@ import reportRoutes from './routes/reports.js';
 import settingsRoutes from './routes/settings.js';
 import reservationRoutes from './routes/reservations.js';
 
+validateProductionEnv();
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: getCorsOrigins(),
+    credentials: true,
+  })
+);
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+if (!isCloudinaryConfigured()) {
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+}
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 
@@ -37,7 +48,14 @@ app.use((err, _req, res, _next) => {
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      if (isCloudinaryConfigured()) {
+        console.log('Menu images: Cloudinary');
+      } else {
+        console.log('Menu images: local server/uploads/menu (set Cloudinary env vars for production)');
+      }
+    });
   })
   .catch((err) => {
     console.error('DB connection failed:', err.message);

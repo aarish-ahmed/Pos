@@ -3,6 +3,7 @@ import Category from '../models/Category.js';
 import MenuItem from '../models/MenuItem.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { menuImageUpload } from '../middleware/upload.js';
+import { storeMenuImage } from '../services/menuImageStorage.js';
 
 const router = express.Router();
 
@@ -39,14 +40,20 @@ router.patch('/categories/:id', protect, authorize('admin', 'manager'), async (r
 });
 
 router.post('/upload-image', protect, authorize('admin', 'manager'), (req, res) => {
-  menuImageUpload(req, res, (err) => {
+  menuImageUpload(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ message: err.message || 'Upload failed' });
     }
     if (!req.file) {
       return res.status(400).json({ message: 'No image file provided' });
     }
-    res.json({ url: `/uploads/menu/${req.file.filename}` });
+    try {
+      const url = await storeMenuImage(req.file);
+      res.json({ url });
+    } catch (uploadErr) {
+      console.error(uploadErr);
+      res.status(500).json({ message: uploadErr.message || 'Image upload failed' });
+    }
   });
 });
 
